@@ -13,11 +13,13 @@ class Encryptor
     /** @var \Philetaylor\DoctrineEncryptBundle\Encryptors\EncryptorInterface */
     protected $encryptor;
 
-    public function __construct($encryptName, $key)
+    public function __construct($encryptName, $key, $redis)
     {
+        dd(func_get_args());
         $reflectionClass = new \ReflectionClass($encryptName);
         $this->encryptor = $reflectionClass->newInstanceArgs([
             $key,
+            $redis
         ]);
     }
 

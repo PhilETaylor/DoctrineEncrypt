@@ -30,6 +30,11 @@ class HaliteEncryptor implements EncryptorInterface
     private $enc_key;
 
     /**
+     * @var \Predis\Client
+     */
+    private $redis;
+
+    /**
      * @var string the name of the config param for the key to use
      */
     private $enc_key_name;
@@ -42,9 +47,10 @@ class HaliteEncryptor implements EncryptorInterface
     /**
      * {@inheritdoc}
      */
-    public function __construct($keys)
+    public function __construct($keys, $redis = null)
     {
         $this->enc_keys = $keys;
+        $this->redis = $redis;
     }
 
     /**
@@ -65,7 +71,9 @@ class HaliteEncryptor implements EncryptorInterface
                 $this->enc_key
             );
 
-            return $ciphertext.'<Ha>';
+            $this->redis->setex('decrypted:' . sha1($ciphertext), 60 * 3, $data);
+
+            return $ciphertext . '<Ha>';
         } else {
             return $data;
         }
@@ -77,12 +85,22 @@ class HaliteEncryptor implements EncryptorInterface
     public function decrypt($ciphertext)
     {
         if (\is_string($ciphertext)) {
+            $key = 'decrypted:' . sha1($ciphertext);
+
+            if ($this->redis->exists($key)) {
+                $this->redis->expire($key, 60 * 3);
+                return $this->redis->get($key);
+            }
+
             $plaintext = Crypto::decrypt(
                 $ciphertext,
                 $this->enc_key
             );
 
-            return $plaintext->getString();
+            $plaintext = $plaintext->getString();
+            $this->redis->setex($key, 60 * 3, $plaintext);
+
+            return $plaintext;
         } else {
             return $ciphertext;
         }
@@ -100,7 +118,7 @@ class HaliteEncryptor implements EncryptorInterface
     {
         if (\array_key_exists($key_name, $this->enc_keys)) {
             $this->enc_key_name = $key_name;
-            $this->enc_key      = KeyFactory::loadEncryptionKey($this->enc_keys[$key_name]);
+            $this->enc_key = KeyFactory::loadEncryptionKey($this->enc_keys[$key_name]);
         }
     }
 }

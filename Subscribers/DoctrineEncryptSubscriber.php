@@ -110,7 +110,7 @@ class DoctrineEncryptSubscriber implements EventSubscriber
      *
      * This allows for the use of dependency injection for the encrypters.
      */
-    public function __construct(Reader $annReader, $encryptorClass, array $secretKeys, EncryptorInterface $service = null)
+    public function __construct(Reader $annReader, $encryptorClass, array $secretKeys, EncryptorInterface $service = null, $redis=null)
     {
         $this->annReader  = $annReader;
         $this->secretKeys = $secretKeys;
@@ -118,7 +118,7 @@ class DoctrineEncryptSubscriber implements EventSubscriber
         if ($service instanceof EncryptorInterface) {
             $this->encryptor = $service;
         } else {
-            $this->encryptor = $this->encryptorFactory($encryptorClass, $secretKeys);
+            $this->encryptor = $this->encryptorFactory($encryptorClass, $secretKeys, $redis);
         }
 
         $this->restoreEncryptor = $this->encryptor;
@@ -134,11 +134,11 @@ class DoctrineEncryptSubscriber implements EventSubscriber
      *
      * @throws \RuntimeException
      */
-    private function encryptorFactory($classFullName, $secretKeys)
+    private function encryptorFactory($classFullName, $secretKeys, $redis)
     {
         $refClass = new \ReflectionClass($classFullName);
         if ($refClass->implementsInterface(self::ENCRYPTOR_INTERFACE_NS)) {
-            return new $classFullName($secretKeys);
+            return new $classFullName($secretKeys, $redis);
         } else {
             throw new \RuntimeException('Encryptor must implements interface EncryptorInterface');
         }
