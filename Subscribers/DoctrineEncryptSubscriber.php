@@ -419,6 +419,10 @@ class DoctrineEncryptSubscriber implements EventSubscriber
         return isset($this->decodedRegistry[spl_object_hash($entity)]);
     }
 
+    public function reset(){
+        $this->decodedRegistry = [];
+    }
+
     /**
      * {@inheritdoc}
      */
